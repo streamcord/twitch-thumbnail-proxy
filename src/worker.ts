@@ -14,10 +14,13 @@ router.post<IRequest, any>('/stream-thumbnails/twitch', withContent, async (requ
 	
 	const body = request.content as RequestContent
 	
-	const [blob, contentType] = await fetchThumbnail(body.thumbnail_url)
-	if (!blob || !contentType) {
-		// TODO: if met with a soft 404, somehow generate the thumbnail later
-		return Response.json({'error': 'failed to generate thumbnail'}, { status: 500 })
+	const [blob, contentType, error] = await fetchThumbnail(body.thumbnail_url)
+	if (error === 'soft 404') {
+		return Response.json({'error': 'try again later'}, { status: 409 })
+	} else if (error) {
+		return Response.json({'error': error}, { status: 502 })
+	} else if (!blob || !contentType) {
+		return Response.json({'error': 'failed to generate thumbnail'}, { status: 502 })
 	}
 
 	const object = await storeAsset(env, body, blob, contentType)
@@ -37,6 +40,10 @@ router.get('/stream-thumbnails/twitch/:userLogin/:slug',async (request: IRequest
 		return prepareResponseFromObject(object)
 	}
 
+	return prepareFallbackResponse(env)
+})
+
+router.get('/stream-thumbnails/twitch/404.png',async (request: IRequest, env: Env, ctx: ExecutionContext) => {
 	return prepareFallbackResponse(env)
 })
 
