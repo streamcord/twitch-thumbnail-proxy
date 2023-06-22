@@ -1,26 +1,50 @@
-import { IRequest, Router } from 'itty-router'
+import { IRequest, Router, withContent } from 'itty-router'
 import Env from './env'
-import { prepareResponseFromObject } from './response'
-import { respondUncachedThumbnail } from './imageFetch'
+import { prepareFallbackResponse, prepareResponseFromObject } from './response'
+import { fetchThumbnail } from './imageFetch'
+import { RequestContent } from './content'
+import { PUBLIC_BASE_URL, R2_KEY_PREFIX, storeAsset } from './r2'
 
 const router = Router()
 
-router.get('/previews-ttv/:userLogin/:streamID', async (request: IRequest, env: Env, ctx: ExecutionContext) => {
-	const userLogin = request.params.userLogin
-	const streamID = request.params.streamID
-	const r2Key = `twitch/thumbnails/${userLogin}/${streamID}`
+router.post<IRequest, any>('/stream-thumbnails/twitch', withContent, async (request: IRequest, env: Env, ctx: ExecutionContext) => {
+	if (request.headers.get('Authorization') != env.API_KEY) {
+		return new Response('unauthorized', { status: 401 })
+	}
 	
-	const object = await env.BUCKET.get(r2Key)
+	const body = request.content as RequestContent
+	
+	const [blob, contentType, error] = await fetchThumbnail(body.thumbnail_url)
+	if (error === 'soft 404') {
+		return Response.json({'error': 'try again later'}, { status: 409 })
+	} else if (error) {
+		return Response.json({'error': error}, { status: 502 })
+	} else if (!blob || !contentType) {
+		return Response.json({'error': 'failed to generate thumbnail'}, { status: 502 })
+	}
+
+	const object = await storeAsset(env, body, blob, contentType)
+	return Response.json({
+		url: PUBLIC_BASE_URL + object.key
+	}, { status: 201 })
+})
+
+router.get('/stream-thumbnails/twitch/:userLogin/:slug',async (request: IRequest, env: Env, ctx: ExecutionContext) => {
+	const userLogin = request.params.userLogin
+	const slug = request.params.slug
+
+	const key = R2_KEY_PREFIX + userLogin + '/' + slug
+
+	const object = await env.BUCKET.get(key)
 	if (object?.body) {
 		return prepareResponseFromObject(object)
 	}
 
-	try {
-		return respondUncachedThumbnail(env, userLogin, streamID)
-	} catch (err) {
-		console.error(err)
-		return new Response('internal server error', { status: 500 })
-	}
+	return prepareFallbackResponse(env)
+})
+
+router.get('/stream-thumbnails/twitch/404.png',async (request: IRequest, env: Env, ctx: ExecutionContext) => {
+	return prepareFallbackResponse(env)
 })
 
 router.all('*', (request: IRequest, env: Env, ctx: ExecutionContext) => {
