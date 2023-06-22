@@ -1,35 +1,11 @@
-import Env from './env'
-import { prepareFallbackResponse } from './response'
-import { addHours } from './time'
-
 /**
- * Fetches the stream thumbnail for the specified user, caches it, and prepares a response.
+ * Fetches the stream thumbnail for the specified user.
+ * 
+ * @param url The URL of the thumbnail to fetch.
+ * @returns A `Blob` containing the response body, along with the response's content type. Returns `null` upon error.
  */
-export async function respondUncachedThumbnail(env: Env, userLogin: string, streamID: string): Promise<Response> {
-    const thumbnail = await fetchThumbnail(userLogin)
-    console.log(`GET ${thumbnail.url} - ${thumbnail.status} ${thumbnail.statusText}`)
-    if (thumbnail.headers.get('X-404-Redirect') === 'true') {
-        return prepareFallbackResponse(env)
-    }
-
-    const blob = await thumbnail.blob()
-    const object = await cacheThumbnail(env, blob, thumbnail.headers, userLogin, streamID)
-
-    const res = new Response(blob, {
-        headers: {
-            'Cache-Control': 'max-age=86400',
-            'Etag': object.httpEtag,
-            'Content-Type': thumbnail.headers.get('Content-Type') || '',
-            'X-Cache': 'MISS'
-        }
-    })
-
-    return res
-}
-
-async function fetchThumbnail(userLogin: string) {
-    const url = `https://static-cdn.jtvnw.net/previews-ttv/live_user_${userLogin}-1280x720.jpg`
-    return await fetch(
+export async function fetchThumbnail(url: string): Promise<[Blob | null, string | null]> {
+    const res = await fetch(
         url,
         {
             cf: {
@@ -39,13 +15,13 @@ async function fetchThumbnail(userLogin: string) {
             redirect: 'manual'
         }
     )
-}
 
-async function cacheThumbnail(env: Env, blob: Blob, headers: Headers, userLogin: string, streamID: string) {
-    return env.BUCKET.put(`twitch/thumbnails/${userLogin}/${streamID}`, blob.stream(), {
-        httpMetadata: {
-            contentType: headers.get('Content-Type') || undefined,
-            cacheControl: 'max-age=86400'
-        }
-    })
+    if (res.status >= 400) {
+        console.error(`failed to get thumbnail (${res.status}): ${await res.text()}`)
+        return [null, null]
+    } else if (res.headers.get('X-404-Redirect') === 'true') {
+        console.log('request for thumbnail returned soft 404')
+        return [null, null]
+    }
+    return [await res.blob(), res.headers.get('content-type')]
 }
