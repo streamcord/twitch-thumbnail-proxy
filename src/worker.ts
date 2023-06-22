@@ -1,9 +1,9 @@
 import { IRequest, Router, withContent } from 'itty-router'
-import Env from './env'
-import { prepareFallbackResponse, prepareResponseFromObject } from './response'
-import { fetchThumbnail } from './imageFetch'
 import { RequestContent } from './content'
+import Env from './env'
+import { fetchThumbnail } from './imageFetch'
 import { PUBLIC_BASE_URL, R2_KEY_PREFIX, storeAsset } from './r2'
+import { prepareFallbackResponse, prepareResponseFromObject } from './response'
 
 const router = Router()
 
@@ -29,7 +29,7 @@ router.post<IRequest, any>('/stream-thumbnails/twitch', withContent, async (requ
 	}, { status: 201 })
 })
 
-router.get('/stream-thumbnails/twitch/:userLogin/:slug',async (request: IRequest, env: Env, ctx: ExecutionContext) => {
+router.get('/stream-thumbnails/twitch/:userLogin/:slug', async (request: IRequest, env: Env, ctx: ExecutionContext) => {
 	const userLogin = request.params.userLogin
 	const slug = request.params.slug
 
@@ -43,7 +43,7 @@ router.get('/stream-thumbnails/twitch/:userLogin/:slug',async (request: IRequest
 	return prepareFallbackResponse(env)
 })
 
-router.get('/stream-thumbnails/twitch/404.png',async (request: IRequest, env: Env, ctx: ExecutionContext) => {
+router.get('/stream-thumbnails/twitch/404.png', async (request: IRequest, env: Env, ctx: ExecutionContext) => {
 	return prepareFallbackResponse(env)
 })
 
