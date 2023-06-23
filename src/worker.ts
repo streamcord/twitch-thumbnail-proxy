@@ -3,7 +3,8 @@ import { RequestContent } from './content'
 import Env from './env'
 import { fetchThumbnail } from './imageFetch'
 import { PUBLIC_BASE_URL, R2_KEY_PREFIX, storeAsset } from './r2'
-import { prepareFallbackResponse, prepareResponseFromObject } from './response'
+import { prepareFallbackResponse } from './response'
+import { getCachedResponse, prepareAndCacheResponseFromObject } from './cache'
 
 const router = Router()
 
@@ -30,6 +31,11 @@ router.post<IRequest, any>('/stream-thumbnails/twitch', withContent, async (requ
 })
 
 router.get('/stream-thumbnails/twitch/:userLogin/:slug', async (request: IRequest, env: Env, ctx: ExecutionContext) => {
+	const cachedResponse = await getCachedResponse(request)
+	if (cachedResponse) {
+		return cachedResponse
+	}
+
 	const userLogin = request.params.userLogin
 	const slug = request.params.slug
 
@@ -37,7 +43,7 @@ router.get('/stream-thumbnails/twitch/:userLogin/:slug', async (request: IReques
 
 	const object = await env.BUCKET.get(key)
 	if (object?.body) {
-		return prepareResponseFromObject(object)
+		return prepareAndCacheResponseFromObject(request, object, ctx)
 	}
 
 	return prepareFallbackResponse(env)

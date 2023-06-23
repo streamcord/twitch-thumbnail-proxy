@@ -4,7 +4,6 @@ export function prepareResponseFromObject(object: R2ObjectBody): Response {
     const headers = new Headers()
 	object.writeHttpMetadata(headers)
 	headers.set('etag', object.httpEtag)
-    headers.set('x-cache', 'HIT')
 
 	return new Response(object.body, { headers })
 }
