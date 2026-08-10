@@ -1,0 +1,9 @@
+name = "twitch-thumbnail-proxy"
+main = "src/worker.ts"
+compatibility_date = "2023-06-21"
+workers_dev = false
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "twitch-thumbnails"
+preview_bucket_name = "twitch-thumbnails-dev"
