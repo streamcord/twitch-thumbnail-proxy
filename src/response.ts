@@ -1,4 +1,4 @@
-import Env from './env'
+import type Env from './env'
 
 export function prepareResponseFromObject(object: R2ObjectBody): Response {
     const headers = new Headers()

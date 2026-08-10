@@ -1,5 +1,5 @@
-import { RequestContent } from './content'
-import Env from './env'
+import type { RequestContent } from './content'
+import type Env from './env'
 
 export const PUBLIC_BASE_URL = 'https://edge-assets.api.streamcord.io/'
 export const R2_KEY_PREFIX = 'stream-thumbnails/twitch/'

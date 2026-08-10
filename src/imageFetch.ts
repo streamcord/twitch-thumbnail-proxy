@@ -1,10 +1,19 @@
+export class ThumbnailFetchError extends Error {
+    public isSoft404: boolean
+
+    constructor(message: string, isSoft404: boolean) {
+        super(`failed to fetch thumbnail: ${message}`)
+        this.isSoft404 = isSoft404
+    }
+}
+
 /**
  * Fetches the stream thumbnail for the specified user.
  * 
  * @param url The URL of the thumbnail to fetch.
- * @returns A `Blob` containing the response body, along with the response's content type, and an error, if one occurred. Returns `null` upon error.
+ * @returns A `Blob` containing the response body, along with the response's content type. Throws `ThumbnailFetchError`.
  */
-export async function fetchThumbnail(url: string): Promise<[Blob | null, string | null, string | null]> {
+export async function fetchThumbnail(url: string): Promise<[Blob, string]> {
     const res = await fetch(
         url,
         {
@@ -17,11 +26,9 @@ export async function fetchThumbnail(url: string): Promise<[Blob | null, string 
     )
 
     if (res.status >= 400) {
-        console.error(`failed to get thumbnail (${res.status}): ${await res.text()}`)
-        return [null, null, `request failed with status code ${res.status}`]
+        throw new ThumbnailFetchError(`request failed with status code ${res.status}: ${await res.text()}`, false)
     } else if (res.headers.get('X-404-Redirect') === 'true') {
-        console.log('request for thumbnail returned soft 404')
-        return [null, null, 'soft 404']
+        throw new ThumbnailFetchError('request failed with soft 404', true)
     }
-    return [await res.blob(), res.headers.get('content-type'), null]
+    return [await res.blob(), res.headers.get('content-type')!]
 }

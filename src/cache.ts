@@ -1,4 +1,4 @@
-import { IRequest } from 'itty-router'
+import type { IRequest } from 'itty-router'
 import { prepareResponseFromObject } from './response'
 
 /**
@@ -25,17 +25,12 @@ export async function prepareAndCacheResponseFromObject(cacheKey: IRequest, obje
  * @returns The matching `Response`, if any, else `undefined` if no cache entry exists.
  */
 export async function getCachedResponse(cacheKey: IRequest): Promise<Response | undefined> {
-    let response = await caches.default.match(cacheKey)
-    if (response) {
-        response = new Response(
-            response.body,
-            {
-                headers: {
-                    ...response.headers,
-                    'x-cache': 'HIT'
-                }
-            }
-        )
-    }
-    return response
+    const response = await caches.default.match(cacheKey)
+    
+    if (!response)
+        return undefined
+
+    const headers = new Headers(response.headers)
+    headers.set('x-cache', 'HIT')
+    return new Response(response.body, { headers })
 }
