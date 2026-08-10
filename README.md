@@ -1,11 +1,20 @@
 # twitch-thumbnail-proxy
 
-Cloudflare Worker for proxying and caching Twitch thumbnails into R2
+Cloudflare Worker that fetches Twitch stream thumbnails, stores them in R2, and serves them with caching.
 
-## How to use
+## Endpoints
 
-Visit `/previews-ttv/:userLogin/:streamID` and the program will fetch the thumbnail from Twitch, and cache it into R2 if it's valid (i.e. doesn't redirect to a 404).
+- `POST /stream-thumbnails/twitch` — fetches a thumbnail and stores it in R2. Requires an `Authorization` header matching `API_KEY`. Body: `{ stream_id, thumbnail_url, user_login }`. Returns `{ url }` on success.
+- `GET /stream-thumbnails/twitch/:userLogin/:slug` — serves a stored thumbnail, cached at the edge. Falls back to a placeholder image if not found.
+- `GET /stream-thumbnails/twitch/404.png` — serves the fallback placeholder image.
 
-## Future functionality
+## Development
 
-In the future, a trusted client (like programs on a server) will be able to call an endpoint for the worker to cache the thumbnail. A static R2 URL could then be used to serve the image. This would require less requests to the worker.
+```bash
+npm start    # run locally with wrangler dev
+npm run deploy
+```
+
+## Config
+
+Requires an `API_KEY` and a `BUCKET` (R2) binding, set in `wrangler.toml` / Cloudflare dashboard.
